@@ -2,9 +2,9 @@
 
 ## Exact Shapley Values on the UCI Airfoil Self-Noise Dataset
 
-This project implements **SHAP values from first principles** rather than relying on the `shap` library for the main calculation.
+This project implements **SHAP values from first principles** instead of using the `shap` library for the main calculation.
 
-The goal is educational: understand exactly how a model prediction is decomposed into a **baseline prediction** plus individual **feature contributions**, then verify the manual implementation against the official SHAP library using the same model, observation, background data, and masking strategy.
+The goal is educational: understand how a model prediction is decomposed into a **baseline prediction** plus individual **feature contributions**, then verify the manual implementation against the official SHAP library using the same model, observation, background data, and masking strategy.
 
 The notebook uses the **UCI Airfoil Self-Noise** regression dataset and a `RandomForestRegressor`.
 
@@ -20,7 +20,7 @@ This notebook answers questions such as:
 - What does it mean when a feature is "missing"?
 - What is a feature coalition?
 - How is the coalition value $v(S)$ calculated?
-- Why is a feature's contribution different in different contexts?
+- Why can a feature contribute differently in different contexts?
 - Where do the Shapley weights come from?
 - Why do all SHAP values add back to the model prediction?
 - How can a manual implementation be checked against the official SHAP package?
@@ -43,19 +43,17 @@ It contains five numerical input features:
 
 The target is the measured sound-pressure level.
 
-Because there are only five features,
+Because there are only five features:
 
-$$
+```math
 M = 5
-$$
+```
 
-there are only
+the number of possible feature coalitions is:
 
-$$
+```math
 2^5 = 32
-$$
-
-possible feature coalitions.
+```
 
 This makes the dataset convenient for learning exact Shapley-value computation.
 
@@ -67,7 +65,7 @@ A `RandomForestRegressor` is trained on the dataset.
 
 The notebook explains the **trained model**, not the underlying physical process itself.
 
-In other words, SHAP answers:
+SHAP answers:
 
 > How did this model use the input features to produce this prediction?
 
@@ -77,11 +75,11 @@ It does **not** establish that a feature physically causes the target to change.
 
 ## Core SHAP Idea
 
-For an observation $x$, SHAP decomposes the model prediction as
+For an observation $x$, SHAP decomposes the model prediction as:
 
-$$
+```math
 f(x) = v(\emptyset) + \sum_{i=1}^{M}\phi_i
-$$
+```
 
 where:
 
@@ -100,7 +98,7 @@ A negative SHAP value pushes it below the baseline.
 
 The model requires values for every feature.
 
-Therefore, when a feature is treated as "unknown", this implementation does not literally delete it. Instead, unknown features are filled using rows from a **background dataset**.
+When a feature is treated as "unknown", this implementation does not literally delete it. Instead, unknown features are filled using rows from a **background dataset**.
 
 For a coalition $S$:
 
@@ -115,25 +113,25 @@ This notebook uses an **independent-background masking** interpretation.
 
 ## 2. Baseline Value
 
-When no feature from the target observation is known, the coalition is
+When no feature from the target observation is known, the coalition is:
 
-$$
+```math
 S = \emptyset
-$$
+```
 
-and the baseline is
+The baseline value is:
 
-$$
+```math
 v(\emptyset)
 =
 \frac{1}{B}
 \sum_{b=1}^{B}
 f\left(x^{(b)}\right)
-$$
+```
 
 where $B$ is the number of background observations.
 
-**Interpretation:**
+### Interpretation
 
 > What does the model predict on average before we use any feature values from the observation being explained?
 
@@ -145,14 +143,14 @@ For a coalition $S$, construct a masked observation for every background row.
 
 For feature $j$ in background row $b$:
 
-$$
+```math
 z_j^{(b,S)}
 =
 \begin{cases}
 x_j, & \text{if } j \in S \\
 x_j^{(b)}, & \text{if } j \notin S
 \end{cases}
-$$
+```
 
 where:
 
@@ -162,13 +160,13 @@ where:
 
 Then calculate the coalition value:
 
-$$
+```math
 v(S)
 =
 \frac{1}{B}
 \sum_{b=1}^{B}
 f\left(z^{(b,S)}\right)
-$$
+```
 
 For example, if only `free-stream-velocity` is known, velocity is fixed to the target observation's value while all other features come from each background row.
 
@@ -186,11 +184,11 @@ The contribution of feature $i$ depends on which features are already known.
 
 For a coalition $S$ that does not contain feature $i$:
 
-$$
+```math
 \Delta_i(S)
 =
 v(S \cup \{i\}) - v(S)
-$$
+```
 
 This asks:
 
@@ -202,13 +200,13 @@ A feature can have different marginal contributions in different coalitions beca
 
 ## 5. Shapley Weight
 
-With $M$ features, the Shapley weight for coalition $S$ is
+With $M$ features, the Shapley weight for coalition $S$ is:
 
-$$
+```math
 w(S)
 =
-\frac{|S|!(M-|S|-1)!}{M!}
-$$
+\frac{\lvert S\rvert!\left(M-\lvert S\rvert-1\right)!}{M!}
+```
 
 The weight comes from considering every possible order in which features could enter the coalition.
 
@@ -216,7 +214,7 @@ It ensures that every possible feature-arrival ordering is treated fairly.
 
 For $M=5$:
 
-| Coalition size $|S|$ | Weight |
+| Coalition size | Weight |
 |---:|---:|
 | 0 | $1/5$ |
 | 1 | $1/20$ |
@@ -228,17 +226,17 @@ For $M=5$:
 
 ## 6. Exact Shapley Value
 
-The exact SHAP value for feature $i$ is
+The exact SHAP value for feature $i$ is:
 
-$$
+```math
 \phi_i
 =
 \sum_{S \subseteq F \setminus \{i\}}
-\frac{|S|!(M-|S|-1)!}{M!}
+\frac{\lvert S\rvert!\left(M-\lvert S\rvert-1\right)!}{M!}
 \left[
 v(S \cup \{i\}) - v(S)
 \right]
-$$
+```
 
 The implementation follows this sequence:
 
@@ -249,13 +247,13 @@ background data
 coalition value v(S)
       |
       v
-marginal contribution Δ_i(S)
+marginal contribution
       |
       v
-Shapley weight w(S)
+Shapley weight
       |
       v
-feature attribution φ_i
+feature attribution
 ```
 
 No SHAP library is used for this main calculation.
@@ -264,23 +262,23 @@ No SHAP library is used for this main calculation.
 
 ## 7. Local Accuracy / Efficiency
 
-After all feature attributions are calculated, they must satisfy
+After all feature attributions are calculated, they must satisfy:
 
-$$
+```math
 \sum_{i=1}^{M}\phi_i
 =
 f(x)-v(\emptyset)
-$$
+```
 
-or equivalently,
+Equivalently:
 
-$$
+```math
 f(x)
 =
 v(\emptyset)
 +
 \sum_{i=1}^{M}\phi_i
-$$
+```
 
 The notebook reconstructs the model prediction from the baseline and manually calculated SHAP values and checks the result numerically.
 
@@ -288,23 +286,23 @@ The notebook reconstructs the model prediction from the baseline and manually ca
 
 ## 8. Inspecting All Coalitions
 
-Because the dataset has only five input features, the notebook can explicitly calculate all
+Because the dataset has only five input features, the notebook can explicitly calculate all:
 
-$$
+```math
 2^5 = 32
-$$
+```
 
 coalition values.
 
-This is useful for learning because the complete table lets you inspect the values from which the final SHAP attributions are built.
+For each feature, the other four features generate:
 
-For each feature, the other four features generate
-
-$$
+```math
 2^4 = 16
-$$
+```
 
 possible coalition contexts.
+
+This makes it possible to inspect the complete set of values used to construct each final SHAP attribution.
 
 ---
 
@@ -335,41 +333,25 @@ explainer = shap.Explainer(
 )
 ```
 
-The notebook then compares
+The notebook compares the manually calculated value $\phi_i^{\text{manual}}$ with the library result $\phi_i^{\text{SHAP}}$ for every feature.
 
-$$
-\phi_i^{\text{manual}}
-$$
+The final comparison is checked using:
 
-against
-
-$$
-\phi_i^{\text{SHAP library}}
-$$
-
-for every feature and checks them using `numpy.allclose`.
+```python
+np.allclose(manual_shap, library_shap, atol=1e-8)
+```
 
 ---
 
 ## Project Structure
 
-A minimal repository can look like this:
-
 ```text
-shap-from-scratch/
+shap-concept/
 |
 |-- README.md
 |-- shap_from_scratch.ipynb
 `-- requirements.txt
 ```
-
-Rename the notebook to:
-
-```text
-shap_from_scratch.ipynb
-```
-
-before uploading it to GitHub.
 
 ---
 
@@ -392,7 +374,7 @@ shap
 jupyter
 ```
 
-Then run:
+Then install it with:
 
 ```bash
 pip install -r requirements.txt
@@ -430,15 +412,11 @@ The notebook:
 
 ### Computational Cost
 
-Exact Shapley-value calculation scales exponentially with the number of features.
+Exact Shapley-value calculation scales exponentially with the number of features:
 
-There are
-
-$$
+```math
 2^M
-$$
-
-possible coalitions.
+```
 
 This is manageable for five features but quickly becomes expensive as $M$ grows.
 
@@ -470,9 +448,7 @@ It does not prove that changing the feature physically causes the target to incr
 
 ## What I Learned From This Project
 
-The main conceptual lesson is that SHAP is not simply a feature-ranking method.
-
-For one observation, it constructs a cooperative game in which:
+For one observation, SHAP constructs a cooperative game in which:
 
 - **players** are input features,
 - **payoff** is the model output,
@@ -482,36 +458,34 @@ For one observation, it constructs a cooperative game in which:
 
 The complete calculation is:
 
-$$
-\text{background}
-\rightarrow
-v(S)
-\rightarrow
-\Delta_i(S)
-\rightarrow
-w(S)
-\rightarrow
-\phi_i
-\rightarrow
-f(x)
-$$
+```text
+background
+    ->
+coalition value v(S)
+    ->
+marginal contribution
+    ->
+Shapley weight
+    ->
+SHAP value
+    ->
+model prediction
+```
 
 ---
 
 ## Possible Extensions
 
-Useful next steps for this repository:
-
-- compare different background datasets,
-- explain several test observations instead of one,
-- visualize manual SHAP values,
-- implement an approximate Shapley estimator using sampled permutations,
-- compare exact SHAP with KernelSHAP,
-- compare exact SHAP with TreeSHAP,
-- investigate correlated features,
-- implement conditional coalition values,
-- repeat the experiment on a classification dataset,
-- add automated tests for the Shapley axioms.
+- Compare different background datasets.
+- Explain several test observations instead of one.
+- Visualize manual SHAP values.
+- Implement an approximate Shapley estimator using sampled permutations.
+- Compare exact SHAP with KernelSHAP.
+- Compare exact SHAP with TreeSHAP.
+- Investigate correlated features.
+- Implement conditional coalition values.
+- Repeat the experiment on a classification dataset.
+- Add automated tests for the Shapley axioms.
 
 ---
 
