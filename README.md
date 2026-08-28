@@ -10,7 +10,7 @@ The notebook uses the **UCI Airfoil Self-Noise** regression dataset and a `Rando
 
 ---
 
-## Why this project?
+## Why This Project?
 
 It is easy to use SHAP with a few library calls, but that can hide the mathematics.
 
@@ -19,7 +19,7 @@ This notebook answers questions such as:
 - What does the SHAP baseline actually mean?
 - What does it mean when a feature is "missing"?
 - What is a feature coalition?
-- How is the coalition value \(v(S)\) calculated?
+- How is the coalition value $v(S)$ calculated?
 - Why is a feature's contribution different in different contexts?
 - Where do the Shapley weights come from?
 - Why do all SHAP values add back to the model prediction?
@@ -46,13 +46,13 @@ The target is the measured sound-pressure level.
 Because there are only five features,
 
 $$
-M=5
+M = 5
 $$
 
 there are only
 
 $$
-2^5=32
+2^5 = 32
 $$
 
 possible feature coalitions.
@@ -75,20 +75,20 @@ It does **not** establish that a feature physically causes the target to change.
 
 ---
 
-## Core SHAP idea
+## Core SHAP Idea
 
-For an observation \(x\), SHAP decomposes the model prediction as
+For an observation $x$, SHAP decomposes the model prediction as
 
 $$
-f(x)=v(\emptyset)+\sum_{i=1}^{M}\phi_i
+f(x) = v(\emptyset) + \sum_{i=1}^{M}\phi_i
 $$
 
 where:
 
-- \(f(x)\) is the model prediction for the observation,
-- \(v(\emptyset)\) is the baseline prediction,
-- \(M\) is the number of input features,
-- \(\phi_i\) is the SHAP value of feature \(i\).
+- $f(x)$ is the model prediction for the observation,
+- $v(\emptyset)$ is the baseline prediction,
+- $M$ is the number of input features,
+- $\phi_i$ is the SHAP value of feature $i$.
 
 A positive SHAP value pushes the prediction above the baseline.
 
@@ -96,16 +96,16 @@ A negative SHAP value pushes it below the baseline.
 
 ---
 
-## 1. Background data
+## 1. Background Data
 
 The model requires values for every feature.
 
 Therefore, when a feature is treated as "unknown", this implementation does not literally delete it. Instead, unknown features are filled using rows from a **background dataset**.
 
-For a coalition \(S\):
+For a coalition $S$:
 
-- features in \(S\) are fixed to their values in the observation being explained,
-- features outside \(S\) come from the background rows,
+- features in $S$ are fixed to their values in the observation being explained,
+- features outside $S$ come from the background rows,
 - the model predicts all resulting masked rows,
 - the predictions are averaged.
 
@@ -113,12 +113,12 @@ This notebook uses an **independent-background masking** interpretation.
 
 ---
 
-## 2. Baseline value
+## 2. Baseline Value
 
 When no feature from the target observation is known, the coalition is
 
 $$
-S=\emptyset
+S = \emptyset
 $$
 
 and the baseline is
@@ -131,28 +131,36 @@ v(\emptyset)
 f\left(x^{(b)}\right)
 $$
 
-where \(B\) is the number of background observations.
+where $B$ is the number of background observations.
 
-Interpretation:
+**Interpretation:**
 
 > What does the model predict on average before we use any feature values from the observation being explained?
 
 ---
 
-## 3. Coalition value
+## 3. Coalition Value
 
-For a coalition \(S\), construct a masked observation for every background row:
+For a coalition $S$, construct a masked observation for every background row.
+
+For feature $j$ in background row $b$:
 
 $$
 z_j^{(b,S)}
 =
 \begin{cases}
-x_j, & j\in S \\
-x_j^{(b)}, & j\notin S
+x_j, & \text{if } j \in S \\
+x_j^{(b)}, & \text{if } j \notin S
 \end{cases}
 $$
 
-Then calculate
+where:
+
+- $x_j$ is feature $j$ from the observation being explained,
+- $x_j^{(b)}$ is feature $j$ from background row $b$,
+- $S$ is the set of features considered known.
+
+Then calculate the coalition value:
 
 $$
 v(S)
@@ -164,7 +172,7 @@ $$
 
 For example, if only `free-stream-velocity` is known, velocity is fixed to the target observation's value while all other features come from each background row.
 
-So "velocity only" does **not** mean training or evaluating a one-feature model.
+So **"velocity only" does not mean training or evaluating a one-feature model**.
 
 It means:
 
@@ -172,29 +180,29 @@ It means:
 
 ---
 
-## 4. Marginal contribution
+## 4. Marginal Contribution
 
-The contribution of feature \(i\) depends on which features are already known.
+The contribution of feature $i$ depends on which features are already known.
 
-For a coalition \(S\) that does not contain feature \(i\),
+For a coalition $S$ that does not contain feature $i$:
 
 $$
 \Delta_i(S)
 =
-v(S\cup\{i\})-v(S)
+v(S \cup \{i\}) - v(S)
 $$
 
 This asks:
 
-> How much does the model prediction change when feature \(i\) joins this particular coalition?
+> How much does the model prediction change when feature $i$ joins this particular coalition?
 
 A feature can have different marginal contributions in different coalitions because the model may contain nonlinearities and interactions.
 
 ---
 
-## 5. Shapley weight
+## 5. Shapley Weight
 
-With \(M\) features, the Shapley weight for coalition \(S\) is
+With $M$ features, the Shapley weight for coalition $S$ is
 
 $$
 w(S)
@@ -206,51 +214,55 @@ The weight comes from considering every possible order in which features could e
 
 It ensures that every possible feature-arrival ordering is treated fairly.
 
-For \(M=5\):
+For $M=5$:
 
-| Coalition size \(|S|\) | Weight |
+| Coalition size $|S|$ | Weight |
 |---:|---:|
-| 0 | \(1/5\) |
-| 1 | \(1/20\) |
-| 2 | \(1/30\) |
-| 3 | \(1/20\) |
-| 4 | \(1/5\) |
+| 0 | $1/5$ |
+| 1 | $1/20$ |
+| 2 | $1/30$ |
+| 3 | $1/20$ |
+| 4 | $1/5$ |
 
 ---
 
-## 6. Exact Shapley value
+## 6. Exact Shapley Value
 
-The exact SHAP value for feature \(i\) is
+The exact SHAP value for feature $i$ is
 
 $$
 \phi_i
 =
-\sum_{S\subseteq F\setminus\{i\}}
+\sum_{S \subseteq F \setminus \{i\}}
 \frac{|S|!(M-|S|-1)!}{M!}
 \left[
-v(S\cup\{i\})-v(S)
+v(S \cup \{i\}) - v(S)
 \right]
 $$
 
-The implementation therefore follows this sequence:
+The implementation follows this sequence:
 
 ```text
 background data
-      ↓
+      |
+      v
 coalition value v(S)
-      ↓
-marginal contribution Δᵢ(S)
-      ↓
+      |
+      v
+marginal contribution Δ_i(S)
+      |
+      v
 Shapley weight w(S)
-      ↓
-feature attribution φᵢ
+      |
+      v
+feature attribution φ_i
 ```
 
 No SHAP library is used for this main calculation.
 
 ---
 
-## 7. Local accuracy / efficiency
+## 7. Local Accuracy / Efficiency
 
 After all feature attributions are calculated, they must satisfy
 
@@ -274,12 +286,12 @@ The notebook reconstructs the model prediction from the baseline and manually ca
 
 ---
 
-## 8. Inspecting all coalitions
+## 8. Inspecting All Coalitions
 
 Because the dataset has only five input features, the notebook can explicitly calculate all
 
 $$
-2^5=32
+2^5 = 32
 $$
 
 coalition values.
@@ -289,14 +301,14 @@ This is useful for learning because the complete table lets you inspect the valu
 For each feature, the other four features generate
 
 $$
-2^4=16
+2^4 = 16
 $$
 
 possible coalition contexts.
 
 ---
 
-## 9. Comparison with the SHAP library
+## 9. Comparison With the SHAP Library
 
 After the manual implementation is complete, the notebook imports `shap` only for verification.
 
@@ -339,19 +351,19 @@ for every feature and checks them using `numpy.allclose`.
 
 ---
 
-## Project structure
+## Project Structure
 
 A minimal repository can look like this:
 
 ```text
 shap-from-scratch/
-│
-├── README.md
-├── shap_from_scratch.ipynb
-└── requirements.txt
+|
+|-- README.md
+|-- shap_from_scratch.ipynb
+`-- requirements.txt
 ```
 
-The current notebook can simply be renamed to:
+Rename the notebook to:
 
 ```text
 shap_from_scratch.ipynb
@@ -363,13 +375,13 @@ before uploading it to GitHub.
 
 ## Installation
 
-Create a Python environment and install:
+Install the required packages:
 
 ```bash
 pip install numpy pandas scikit-learn ucimlrepo shap jupyter
 ```
 
-Or create `requirements.txt` containing:
+Or create a `requirements.txt` file:
 
 ```text
 numpy
@@ -380,9 +392,15 @@ shap
 jupyter
 ```
 
+Then run:
+
+```bash
+pip install -r requirements.txt
+```
+
 ---
 
-## Run the notebook
+## Run the Notebook
 
 Start Jupyter:
 
@@ -408,9 +426,9 @@ The notebook:
 
 ---
 
-## Important limitations
+## Important Limitations
 
-### Computational cost
+### Computational Cost
 
 Exact Shapley-value calculation scales exponentially with the number of features.
 
@@ -422,17 +440,17 @@ $$
 
 possible coalitions.
 
-This is manageable for five features but quickly becomes expensive as \(M\) grows.
+This is manageable for five features but quickly becomes expensive as $M$ grows.
 
 Real-world SHAP implementations therefore use specialized or approximate algorithms such as TreeSHAP and KernelSHAP when exact enumeration is impractical.
 
-### Background dependence
+### Background Dependence
 
 The SHAP values depend on the chosen background distribution.
 
 Changing the reference dataset can change the explanation.
 
-### Correlated features
+### Correlated Features
 
 This implementation uses independent-background masking.
 
@@ -440,7 +458,7 @@ If features are strongly correlated, replacing unknown features independently ma
 
 Conditional SHAP uses a different definition of the coalition value to account for dependencies between features.
 
-### SHAP is not causality
+### SHAP Is Not Causality
 
 A large positive SHAP value means:
 
@@ -450,7 +468,7 @@ It does not prove that changing the feature physically causes the target to incr
 
 ---
 
-## What I learned from this project
+## What I Learned From This Project
 
 The main conceptual lesson is that SHAP is not simply a feature-ranking method.
 
@@ -465,7 +483,6 @@ For one observation, it constructs a cooperative game in which:
 The complete calculation is:
 
 $$
-\boxed{
 \text{background}
 \rightarrow
 v(S)
@@ -477,14 +494,13 @@ w(S)
 \phi_i
 \rightarrow
 f(x)
-}
 $$
 
 ---
 
-## Possible extensions
+## Possible Extensions
 
-Useful next steps for this repository would be:
+Useful next steps for this repository:
 
 - compare different background datasets,
 - explain several test observations instead of one,
@@ -501,16 +517,16 @@ Useful next steps for this repository would be:
 
 ## References
 
-- Lundberg, S. M., & Lee, S.-I. (2017). *A Unified Approach to Interpreting Model Predictions*. Advances in Neural Information Processing Systems.
 - Shapley, L. S. (1953). *A Value for n-Person Games*.
+- Lundberg, S. M., & Lee, S.-I. (2017). *A Unified Approach to Interpreting Model Predictions*. Advances in Neural Information Processing Systems.
 - UCI Machine Learning Repository — Airfoil Self-Noise Dataset.
-- SHAP documentation: https://shap.readthedocs.io/
+- SHAP documentation: <https://shap.readthedocs.io/>
 
 ---
 
 ## License
 
-Add the license that fits how you want others to use this repository. For a small educational project, the **MIT License** is a common choice.
+For a small educational repository, the **MIT License** is a common choice.
 
 ---
 
